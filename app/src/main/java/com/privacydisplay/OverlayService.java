@@ -26,6 +26,16 @@ import androidx.core.app.NotificationCompat;
 import androidx.preference.PreferenceManager;
 
 public class OverlayService extends Service implements SensorEventListener {
+    private android.content.BroadcastReceiver screenReceiver = new android.content.BroadcastReceiver() {
+        @Override
+        public void onReceive(android.content.Context context, android.content.Intent intent) {
+            if (android.content.Intent.ACTION_SCREEN_OFF.equals(intent.getAction())) {
+                if (sensorManager != null) sensorManager.unregisterListener(OverlayService.this);
+            } else if (android.content.Intent.ACTION_SCREEN_ON.equals(intent.getAction())) {
+                if (sensorManager != null) sensorManager.registerListener(OverlayService.this, accelerometer, android.hardware.SensorManager.SENSOR_DELAY_NORMAL);
+            }
+        }
+    };
 
     public static final String ACTION_START  = "ACTION_START";
     public static final String ACTION_STOP   = "ACTION_STOP";
@@ -80,6 +90,10 @@ public class OverlayService extends Service implements SensorEventListener {
         accelerometer = sensorManager.getDefaultSensor(Sensor.TYPE_ACCELEROMETER);
         windowManager = (WindowManager) getSystemService(WINDOW_SERVICE);
         buildOverlayView();
+        android.content.IntentFilter filter = new android.content.IntentFilter();
+        filter.addAction(android.content.Intent.ACTION_SCREEN_OFF);
+        filter.addAction(android.content.Intent.ACTION_SCREEN_ON);
+        registerReceiver(screenReceiver, filter);
     }
 
     private void buildOverlayView() {
@@ -200,7 +214,7 @@ public class OverlayService extends Service implements SensorEventListener {
     private void registerSensor() {
         if (accelerometer == null) return;
         sensorManager.registerListener(this, accelerometer,
-                SensorManager.SENSOR_DELAY_GAME, 0);
+                SensorManager.SENSOR_DELAY_NORMAL, 0);
     }
 
     @Override
@@ -302,6 +316,7 @@ public class OverlayService extends Service implements SensorEventListener {
     // ── Lifecycle ─────────────────────────────────────────────────────────────
     @Override
     public void onDestroy() {
+        unregisterReceiver(screenReceiver);
         sRunning = false;
         sensorManager.unregisterListener(this);
         if (currentAnim != null) currentAnim.cancel();
